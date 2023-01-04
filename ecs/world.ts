@@ -7,8 +7,8 @@ export class World{
     private chunks : Array<Chunk>
 
     public createEntity(components : Array<Component>){
-        let chunk = this.getArchetypicalChunk(query);
-        let entity = new Entity();
+        // let chunk = this.getArchetypicalChunk(query);
+        // let entity = new Entity();
     }
 
     public update(){
