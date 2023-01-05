@@ -1,14 +1,15 @@
-import {Chunk}      from "./chunk"
-import {Component}  from "./component";
-import {Entity}     from "./entity"
-import {Query}      from "./query";
+import {Chunk} from "./chunk"
+import {Component} from "./component";
+import {Query} from "./query";
+import {Entity} from "./entity";
 
 export class World{
-    private chunks : Array<Chunk>
+    private chunks : Array<Chunk> = new Array<Chunk>();
 
     public createEntity(components : Array<Component>){
-        // let chunk = this.getArchetypicalChunk(query);
-        // let entity = new Entity();
+        let query = new Query(components);
+        let chunk = this.getOrCreateArchetypeChunk(query);
+        return chunk.createEntity(components);
     }
 
     public update(){
@@ -24,8 +25,7 @@ export class World{
         //At some point: try to do both at the same time :)
     }
 
-    //get chunk for archetype -> when creating entity add it here
-    private getArchetypicalChunk(query : Query){
+    private findArchetypeChunk(query : Query) : Chunk{
         let queryLength = query.values.size;
         for (let chunk of this.chunks){
             let chunkQuery = chunk.query.values;
@@ -44,6 +44,17 @@ export class World{
             if (isMatch){
                 return chunk;
             }
+        }
+
+        return null;
+    }
+
+    //get chunk for archetype -> when creating entity add it here
+    private getOrCreateArchetypeChunk(query : Query) : Chunk{
+        let foundChunk = this.findArchetypeChunk(query);
+        if (foundChunk != null)
+        {
+            return foundChunk;
         }
 
         return this.createChunk(query);
@@ -72,6 +83,13 @@ export class World{
     }
 
     private createChunk(query : Query) : Chunk{
-        return new Chunk(query); //factory / pooling?
+        let chunk = new Chunk(query);
+        this.chunks.push(chunk);
+        return chunk; //factory / pooling?
+    }
+
+    private deleteEntity(entity : Entity){
+        let chunk = this.findArchetypeChunk(entity.query);
+        chunk.deleteEntity(entity);
     }
 }
