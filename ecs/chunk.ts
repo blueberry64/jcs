@@ -16,18 +16,12 @@ export class Chunk{
         for (let type of query.values){
             this.components[type] = new Array<Component>();
         }
-        console.log("constructor");
-        console.log(this.components);
-        console.log(this.query.values);
     }
 
     public createEntity(data : Array<Component>) : Entity{ //maybe ...data : Array<> thing for args? :)
         //todo validate data == query
 
         for (let component of data){
-            console.log("for");
-            console.log(this.components);
-            console.log(component.name);
             let componentArray = this.components[component.name];
             componentArray.push(component);
         }
