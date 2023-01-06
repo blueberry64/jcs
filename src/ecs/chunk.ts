@@ -1,11 +1,11 @@
 import assert = require("assert");
 
-import {Entity}     from "./Entity"
+import {Entity}     from "./entity"
 import {Component}  from "./component";
 import {Query}      from "./query";
 
 
-export class Chunk{
+export class Chunk<T extends Component[]>{
     public readonly query : Query;
     public components : { [index : string] : Array<Component> } = {};
     public entities : Array<Entity> = new Array<Entity>();

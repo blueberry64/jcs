@@ -1,21 +1,11 @@
 const assert = require('assert');
 const chai  = require("chai")
 
-const {World} = require("../build/ecs/world");
-const {Component} = require("../build/ecs/component");
+const {World} = require("../../build/ecs/world");
+const {Component} = require("../../build/ecs/component");
 const {deepEqual} = require("assert");
-
-class Position extends Component {
-    x = 1;
-    y = 2;
-    z = 3;
-}
-
-class Velocity extends Component{
-    x = 1;
-    y = 2;
-    z = 3;
-}
+const {Position} = require("../game/move/components/position");
+const {Velocity} = require("../game/move/components/velocity");
 
 class Color extends Component{
     constructor(label) {
@@ -54,5 +44,22 @@ describe('Create Entity', function () {
         testComponents(velocities);
         testComponents(colors);
     });
+});
+
+describe("Move System", function (){
+    let world = new World();
+
+    for (let i = 0; i < 1000; i++){
+        x_pos = Math.random();
+        y_pos = Math.random();
+
+        x_vel = Math.random();
+        y_vel = Math.random();
+
+        world.createEntity(new Position(), new Velocity());
+    }
+
+    assert(world.chunks.length === 1);
+    assert(world.chunks[0].entities.length === 1000);
 
 });
