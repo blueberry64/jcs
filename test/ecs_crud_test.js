@@ -1,11 +1,12 @@
 const assert = require('assert');
 const chai  = require("chai")
-
-const {World} = require("../../build/ecs/world");
-const {Component} = require("../../build/ecs/component");
 const {deepEqual} = require("assert");
-const {Position} = require("../game/move/components/position");
-const {Velocity} = require("../game/move/components/velocity");
+const {Component} = require("../build/ecs/component");
+const {Position} = require("../build/game/move/components/position");
+const {Velocity} = require("../build/game/move/components/velocity");
+const {MoveSystem} = require("../build/game/move/systems/move_system");
+const {World} = require("../build/ecs/world");
+
 
 class Color extends Component{
     constructor(label) {
@@ -18,8 +19,8 @@ describe('Create Entity', function () {
 
     let world = new World();
 
-    world.createEntity([new Color("red"), new Position(), new Velocity()])
-    world.createEntity([new Position, new Velocity(), new Color("red")]);
+    world.createEntity(new Color("red"), new Position(), new Velocity())
+    world.createEntity(new Position, new Velocity(), new Color("red"));
 
     it ("should have one chunk", function (){
         let numChunks = world.chunks.length;
@@ -27,10 +28,10 @@ describe('Create Entity', function () {
     });
 
     it('both should have position {1, 2, 3}, velocity {4, 5, 6}, color:red', function () {
-        let components = world.chunks[0].components;
-        let positions  = components["Position"];
-        let velocities = components["Velocity"];
-        let colors     = components["Color"];
+        let chunk = world.chunks[0];
+        let positions  = chunk.get(Position);
+        let velocities = chunk.get(Velocity);
+        let colors     = chunk.get(Color);
 
         assert(positions.length !== 0)
         assert(positions.length === velocities.length);
@@ -59,7 +60,16 @@ describe("Move System", function (){
         world.createEntity(new Position(), new Velocity());
     }
 
-    assert(world.chunks.length === 1);
-    assert(world.chunks[0].entities.length === 1000);
+    it ("should have one chunk", function (){
+        assert(world.chunks.length === 1);
+    });
 
+    it("should have 1000 entities", function (){
+        assert(world.chunks[0].entities.length === 1000);
+    });
+
+    world.registerSystem(new MoveSystem());
+    it ("should have one system", function (){
+        assert(world.updateQuerySystems.length === 1);
+    })
 });

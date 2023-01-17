@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="main.ts" type="NodeJSConfigurationType" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/src/main.ts" working-dir="$PROJECT_DIR$">
+  <configuration default="false" name="main.ts" type="NodeJSConfigurationType" nameIsGenerated="true" path-to-js-file="src/main.ts" working-dir="$PROJECT_DIR$">
     <method v="2">
       <option name="TypeScript.Before.Run" enabled="true" FAIL_ON_ERROR="true" />
     </method>

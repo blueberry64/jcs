@@ -1,13 +1,15 @@
 import {Component} from "./component";
 
 export class Query{
-    public readonly values : Set<string>;
+    public readonly values : Set<Function>;
+    public readonly asArray : Array<Function>;
 
-    constructor(components : Array<Component>) {
-        this.values = new Set(components.map(c => c.name));
+    constructor(...components : Array<Function>) {
+        this.values = new Set(components);
+        this.asArray = [...components];
     }
 
-    public has(other : string) : boolean {
+    public has(other : Function) : boolean {
         return this.values.has(other);
     }
 

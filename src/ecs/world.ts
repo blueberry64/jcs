@@ -1,5 +1,5 @@
 import {Chunk} from "./chunk"
-import {Component} from "./component";
+import {Component, ComponentClass} from "./component";
 import {Query} from "./query";
 import {Entity} from "./entity";
 import {System} from "./system";
@@ -9,7 +9,7 @@ export class World{
     private updateQuerySystems : Array<[Query, Array<System>]> = new Array<[Query, Array<System>]>();
 
     public createEntity(...data : Array<Component>){
-        let query = new Query(data);
+        let query = new Query(...data.map(c => c.constructor));
         let chunk = this.getOrCreateArchetypeChunk(query);
         return chunk.createEntity(data);
     }
@@ -36,7 +36,7 @@ export class World{
             let chunks = this.findMatchingChunks(query);
             for (let system of systems){
                 for (let chunk of chunks){
-                    system.update(chunk.entities, chunk.components)
+                    system.update(chunk.entities, chunk.get);
                 }
             }
         }

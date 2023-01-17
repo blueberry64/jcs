@@ -1,5 +1,4 @@
 export abstract class Component {
-    public get name(){
-        return this.constructor.name;
-    }
 }
+
+export type ComponentClass<T extends Component> = new (...args: any[]) => T
