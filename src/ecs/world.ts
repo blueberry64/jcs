@@ -26,6 +26,7 @@ export class World{
         }
 
         this.updateQuerySystems.push([system.query, new Array<System>(system)]);
+        system.init();
     }
 
     public update(){
@@ -36,7 +37,7 @@ export class World{
             let chunks = this.findMatchingChunks(query);
             for (let system of systems){
                 for (let chunk of chunks){
-                    system.update(chunk.entities, chunk.get);
+                    system.update(chunk.entities, chunk);
                 }
             }
         }

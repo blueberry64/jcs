@@ -19,8 +19,8 @@ describe('Create Entity', function () {
 
     let world = new World();
 
-    world.createEntity(new Color("red"), new Position(), new Velocity())
-    world.createEntity(new Position, new Velocity(), new Color("red"));
+    world.createEntity(new Color("red"), new Position(0, 0), new Velocity(0, 0))
+    world.createEntity(new Position(0, 0), new Velocity(0, 0), new Color("red"));
 
     it ("should have one chunk", function (){
         let numChunks = world.chunks.length;
@@ -50,14 +50,16 @@ describe('Create Entity', function () {
 describe("Move System", function (){
     let world = new World();
 
-    for (let i = 0; i < 1000; i++){
+    const numEntities = Math.pow(2, 10);
+    let x_pos, y_pos, x_vel, y_vel;
+    for (let i = 0; i < numEntities; i++) {
         x_pos = Math.random();
         y_pos = Math.random();
 
         x_vel = Math.random();
         y_vel = Math.random();
 
-        world.createEntity(new Position(), new Velocity());
+        world.createEntity(new Position(x_pos, y_pos), new Velocity(x_vel, y_vel));
     }
 
     it ("should have one chunk", function (){
@@ -65,11 +67,16 @@ describe("Move System", function (){
     });
 
     it("should have 1000 entities", function (){
-        assert(world.chunks[0].entities.length === 1000);
+        assert(world.chunks[0].entities.length === numEntities);
     });
 
     world.registerSystem(new MoveSystem());
-    it ("should have one system", function (){
+    it ( "should have one system", function (){
         assert(world.updateQuerySystems.length === 1);
     })
+
+    //just for fun
+    for (let i = 0; i < 1000; i++){
+        world.update();
+    }
 });
