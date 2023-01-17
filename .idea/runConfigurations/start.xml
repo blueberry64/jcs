@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="start" type="NodeJSConfigurationType" path-to-js-file="build/main.js" working-dir="$PROJECT_DIR$">
     <EXTENSION ID="com.jetbrains.nodejs.run.NodeJSProfilingRunConfigurationExtension">
-      <profiling one-log-file="true" do-profile="true" />
+      <profiling log-folder="logs" do-profile="true" />
     </EXTENSION>
     <method v="2">
       <option name="TypeScript.Before.Run" enabled="true" FAIL_ON_ERROR="true" />
