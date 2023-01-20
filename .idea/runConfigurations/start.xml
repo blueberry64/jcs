@@ -1,16 +1,10 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="start" type="NodeJSConfigurationType" working-dir="$PROJECT_DIR$">
+  <configuration default="false" name="start" type="NodeJSConfigurationType" path-to-js-file="build/main.js" working-dir="$PROJECT_DIR$">
+    <EXTENSION ID="com.jetbrains.nodejs.run.NodeJSProfilingRunConfigurationExtension">
+      <profiling log-folder="logs" do-profile="true" />
+    </EXTENSION>
     <method v="2">
-      <option name="TypeScript.Before.Run" enabled="true" FAIL_ON_ERROR="true" CONFIG_PATH="" />
-      <option name="NpmBeforeRunTask" enabled="true">
-        <package-json value="$PROJECT_DIR$/package.json" />
-        <command value="run" />
-        <scripts>
-          <script value="start" />
-        </scripts>
-        <node-interpreter value="project" />
-        <envs />
-      </option>
+      <option name="TypeScript.Before.Run" enabled="true" FAIL_ON_ERROR="true" />
     </method>
   </configuration>
 </component>

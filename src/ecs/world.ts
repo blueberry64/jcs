@@ -1,28 +1,46 @@
 import {Chunk} from "./chunk"
-import {Component} from "./component";
+import {Component, ComponentClass} from "./component";
 import {Query} from "./query";
 import {Entity} from "./entity";
+import {System} from "./system";
 
 export class World{
     private chunks : Array<Chunk> = new Array<Chunk>();
+    private updateQuerySystems : Array<[Query, Array<System>]> = new Array<[Query, Array<System>]>();
 
-    public createEntity(components : Array<Component>){
-        let query = new Query(components);
+    public createEntity(...data : Array<Component>){
+        let query = new Query(...data.map(c => c.constructor));
         let chunk = this.getOrCreateArchetypeChunk(query);
-        return chunk.createEntity(components);
+        return chunk.createEntity(data);
+    }
+
+    public registerSystem(system : System){
+        for (let querySystemPair of this.updateQuerySystems) {
+            let query = querySystemPair[0];
+            let systems = querySystemPair[1];
+
+            if (query.matches(system.query)){
+                systems.push(system);
+                return;
+            }
+        }
+
+        this.updateQuerySystems.push([system.query, new Array<System>(system)]);
+        system.init();
     }
 
     public update(){
-        //for each system
-            //for each chunk matching query
-                //run system using chunk
-                //write changes to buffers
+        for (let querySystemPair of this.updateQuerySystems){
+            let query = querySystemPair[0];
+            let systems = querySystemPair[1];
 
-        //for each buffer we wrote to:
-            //update entities changed in buffer
-                //ie look for matching buffer chunks, write to.
-
-        //At some point: try to do both at the same time :)
+            let chunks = this.findMatchingChunks(query);
+            for (let system of systems){
+                for (let chunk of chunks){
+                    system.update(chunk.entities, chunk);
+                }
+            }
+        }
     }
 
     private findArchetypeChunk(query : Query) : Chunk{
@@ -61,7 +79,7 @@ export class World{
     }
 
     //get all chunks with superset of query -> systems etc.
-    private getMatchingChunks(query : Query) : Array<Chunk> {
+    private findMatchingChunks(query : Query) : Array<Chunk> {
         //todo some elegant functional bullshit
         //maybe cache queries somewhere so only one check / query / frame?
         let foundChunks = new Array<Chunk>; //allocate new array every time?
@@ -76,7 +94,10 @@ export class World{
                 }
             }
 
-            foundChunks.push(chunk);
+            if (chunkMatchesQuery)
+            {
+                foundChunks.push(chunk);
+            }
         }
 
         return foundChunks;
