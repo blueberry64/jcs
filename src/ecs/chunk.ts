@@ -1,50 +1,58 @@
 import assert = require("assert");
 
-import {Entity}     from "./entity"
-import {Component, ComponentClass}  from "./component";
+import {Component}  from "./component";
 import {Query}      from "./query";
-import {Position} from "../game/move/components/position";
 
-
-export type ComponentData = Map<Function, Array<Component>>;
 export class Chunk{
-    public readonly query : Query;
-    public components : ComponentData = new Map<Function, Array<Component>>();
+    private static readonly entities_per_chunk = 512; //page size = 256kb? https://github.com/danbev/learning-v8/blob/master/notes/heap.md
+                                                       //want ~128 bytes per entity?
+                                                       //1024 * 128 
+    private data_buffer : ArrayBuffer;
+    private data_views : Map<string, DataView>;
+    public entities : Uint32Array = new Uint32Array(Chunk.entities_per_chunk).fill(0);
+    private last_new_index = -1;
 
-    public entities : Array<Entity> = new Array<Entity>();
-    private nextIndex : number = 0;
+    public archetype_query : Query;
 
-    constructor(query : Query) {
-        this.query = query;
-        for (let type of query.values){
-            this.components.set(type, new Array<Component>());
+    constructor(query : Query){
+        this.data_buffer = new ArrayBuffer(Chunk.entities_per_chunk * query.sizeof_entity);
+        this.archetype_query = query;
+
+        let offset = 0;
+        for (let component of query.components){
+            const view_length = Chunk.entities_per_chunk * component.size;
+            this.data_views.set(component.name, new DataView(this.data_buffer, offset, view_length));
+            offset += view_length;
         }
     }
 
-    public createEntity(data : Array<Component>) : Entity{ //maybe ...data : Array<> thing for args? :)
-        //todo validate data == query
-
-        for (let component of data){
-            let componentArray = this.components.get(component.constructor);
-            componentArray.push(component);
-        }
-
-        let entity = new Entity(this.entities.length, this.query); //pool?
-        this.entities.push(entity);
-        return entity;
+    public query_for(componentType : Function) {
+        return this.data_views.get(componentType.name);
     }
 
-    public deleteEntity(entity : Entity){
-        //todo  enforce entity is in this chunk?
-        for (let type of this.query.values){
-            let array = this.components.get(type);
-            delete array[entity.id];
+    private find_next_index() : number {
+        for (let i = this.last_new_index + 1; i < this.entities.length; i++) {
+            if (this.entities[i] === 0) {
+                return i;
+            }
         }
 
-        delete this.entities[entity.id];
+        for (let i = 0; i < this.last_new_index; i++) {
+            if (this.entities[i] === 0) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
-    public get<T extends Component>(componentClass : ComponentClass<T>) : T[]{
-        return this.components.get(componentClass) as T[];
+    public create_entity(id : number, data: Component[]) : boolean {
+        const index = this.find_next_index();
+        if (index < 0) {
+            return false;
+        }
+
+        this.entities[index] = id;
+
     }
 }

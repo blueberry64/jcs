@@ -1,5 +1,5 @@
 import {Chunk} from "./chunk"
-import {Component, ComponentClass} from "./component";
+import {Component} from "./component";
 import {Query} from "./query";
 import {Entity} from "./entity";
 import {System} from "./system";
@@ -8,10 +8,14 @@ export class World{
     private chunks : Array<Chunk> = new Array<Chunk>();
     private updateQuerySystems : Array<[Query, Array<System>]> = new Array<[Query, Array<System>]>();
 
-    public createEntity(...data : Array<Component>){
-        let query = new Query(...data.map(c => c.constructor));
+    private next_entity_id = 1;
+
+    public createEntity(query : Query, ...data : Array<Component>) {
         let chunk = this.getOrCreateArchetypeChunk(query);
-        return chunk.createEntity(data);
+
+        let id = this.next_entity_id;
+        this.next_entity_id++;
+        chunk.create_entity(data);
     }
 
     public registerSystem(system : System){
@@ -29,37 +33,23 @@ export class World{
         system.init();
     }
 
-    public update(){
-        for (let querySystemPair of this.updateQuerySystems){
+    public update() {
+        for (let querySystemPair of this.updateQuerySystems) {
             let query = querySystemPair[0];
             let systems = querySystemPair[1];
 
             let chunks = this.findMatchingChunks(query);
-            for (let system of systems){
-                for (let chunk of chunks){
+            for (let system of systems) {
+                for (let chunk of chunks) {
                     system.update(chunk.entities, chunk);
                 }
             }
         }
     }
 
-    private findArchetypeChunk(query : Query) : Chunk{
-        let queryLength = query.values.size;
+    private findArchetypeChunk(query : Query) : Chunk {
         for (let chunk of this.chunks){
-            let chunkQuery = chunk.query.values;
-            if (chunkQuery.size != queryLength){
-                continue;
-            }
-
-            let isMatch = true;
-            for (let queryKey of chunkQuery){
-                if (!query.has(queryKey)){
-                    isMatch = false;
-                    break;
-                }
-            }
-
-            if (isMatch){
+            if (chunk.archetype_query.matches(query)) {
                 return chunk;
             }
         }
@@ -68,10 +58,9 @@ export class World{
     }
 
     //get chunk for archetype -> when creating entity add it here
-    private getOrCreateArchetypeChunk(query : Query) : Chunk{
+    private getOrCreateArchetypeChunk(query : Query) : Chunk {
         let foundChunk = this.findArchetypeChunk(query);
-        if (foundChunk != null)
-        {
+        if (foundChunk != null) {
             return foundChunk;
         }
 
@@ -80,22 +69,10 @@ export class World{
 
     //get all chunks with superset of query -> systems etc.
     private findMatchingChunks(query : Query) : Array<Chunk> {
-        //todo some elegant functional bullshit
         //maybe cache queries somewhere so only one check / query / frame?
         let foundChunks = new Array<Chunk>; //allocate new array every time?
-        for (let chunk of this.chunks){
-            let chunkQuery = chunk.query.values;
-            let chunkMatchesQuery = true;
-
-            for (let type of query.values){
-                if (!chunkQuery.has(type)){
-                    chunkMatchesQuery = false;
-                    break;
-                }
-            }
-
-            if (chunkMatchesQuery)
-            {
+        for (let chunk of this.chunks) {
+            if (chunk.archetype_query.is_superset_of(query)) {
                 foundChunks.push(chunk);
             }
         }
@@ -103,14 +80,9 @@ export class World{
         return foundChunks;
     }
 
-    private createChunk(query : Query) : Chunk{
+    private createChunk(query : Query) : Chunk {
         let chunk = new Chunk(query);
         this.chunks.push(chunk);
         return chunk; //factory / pooling?
-    }
-
-    private deleteEntity(entity : Entity){
-        let chunk = this.findArchetypeChunk(entity.query);
-        chunk.deleteEntity(entity);
     }
 }
