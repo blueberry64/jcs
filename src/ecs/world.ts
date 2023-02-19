@@ -1,88 +1,37 @@
-import {Chunk} from "./chunk"
-import {Component} from "./component";
-import {Query} from "./query";
-import {Entity} from "./entity";
-import {System} from "./system";
+const { Worker, isMainThread, parentPort } = require('worker_threads');
+import { System } from "./system";
+import {Chunk} from "./chunk";
 
-export class World{
-    private chunks : Array<Chunk> = new Array<Chunk>();
-    private updateQuerySystems : Array<[Query, Array<System>]> = new Array<[Query, Array<System>]>();
+export class World {
+    private workers : Worker[];
+    private systems : System[];
 
-    private next_entity_id = 1;
-
-    public createEntity(query : Query, ...data : Array<Component>) {
-        let chunk = this.getOrCreateArchetypeChunk(query);
-
-        let id = this.next_entity_id;
-        this.next_entity_id++;
-        chunk.create_entity(data);
+    constructor(num_workers : number = 128) {
+        for (let i = 0; i < num_workers; i++){
+            const worker = new Worker("./worker.js");
+            worker.on("postupdate", (data) => {
+                console.log("worker finished");
+                this.workers.push(worker);
+            });
+            this.workers.push(worker);
+        }
     }
 
-    public registerSystem(system : System){
-        for (let querySystemPair of this.updateQuerySystems) {
-            let query = querySystemPair[0];
-            let systems = querySystemPair[1];
-
-            if (query.matches(system.query)){
-                systems.push(system);
-                return;
-            }
-        }
-
-        this.updateQuerySystems.push([system.query, new Array<System>(system)]);
-        system.init();
+    private add_system(system : System) {
+        this.systems.push(system);
     }
 
     public update() {
-        for (let querySystemPair of this.updateQuerySystems) {
-            let query = querySystemPair[0];
-            let systems = querySystemPair[1];
-
-            let chunks = this.findMatchingChunks(query);
-            for (let system of systems) {
-                for (let chunk of chunks) {
-                    system.update(chunk.entities, chunk);
-                }
+        for (const system of this.systems) {
+            const chunks = this.find_matching_chunks(system);
+            for (const chunk of chunks) {
+                const worker = this.workers.pop();
+                worker.postMessage({ typedArray: chunk.data, func: system.update }, [chunk.data])
             }
         }
     }
 
-    private findArchetypeChunk(query : Query) : Chunk {
-        for (let chunk of this.chunks){
-            if (chunk.archetype_query.matches(query)) {
-                return chunk;
-            }
-        }
-
-        return null;
-    }
-
-    //get chunk for archetype -> when creating entity add it here
-    private getOrCreateArchetypeChunk(query : Query) : Chunk {
-        let foundChunk = this.findArchetypeChunk(query);
-        if (foundChunk != null) {
-            return foundChunk;
-        }
-
-        return this.createChunk(query);
-    }
-
-    //get all chunks with superset of query -> systems etc.
-    private findMatchingChunks(query : Query) : Array<Chunk> {
-        //maybe cache queries somewhere so only one check / query / frame?
-        let foundChunks = new Array<Chunk>; //allocate new array every time?
-        for (let chunk of this.chunks) {
-            if (chunk.archetype_query.is_superset_of(query)) {
-                foundChunks.push(chunk);
-            }
-        }
-
-        return foundChunks;
-    }
-
-    private createChunk(query : Query) : Chunk {
-        let chunk = new Chunk(query);
-        this.chunks.push(chunk);
-        return chunk; //factory / pooling?
+    private find_matching_chunks(system : System) : Chunk[] {
+        return [];
     }
 }
