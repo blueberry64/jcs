@@ -1,37 +1,35 @@
-const { Worker, isMainThread, parentPort } = require('worker_threads');
-import { System } from "./system";
-import {Chunk} from "./chunk";
+import { Worker } from 'worker_threads';
+import {QueryFactory} from "./systemQuery";
+import {SystemContainer} from "./system_container";
+import {Position} from "../game/movement/components/position";
+import {Velocity} from "../game/movement/components/velocity";
+
+const WORKER_FILE_PATH = './build/ecs/system_worker.js';
 
 export class World {
-    private workers : Worker[];
-    private systems : System[];
 
-    constructor(num_workers : number = 128) {
-        for (let i = 0; i < num_workers; i++){
-            const worker = new Worker("./worker.js");
-            worker.on("postupdate", (data) => {
-                console.log("worker finished");
-                this.workers.push(worker);
-            });
-            this.workers.push(worker);
-        }
-    }
-
-    private add_system(system : System) {
-        this.systems.push(system);
-    }
+    private system_container = new SystemContainer();
 
     public update() {
-        for (const system of this.systems) {
-            const chunks = this.find_matching_chunks(system);
-            for (const chunk of chunks) {
-                const worker = this.workers.pop();
-                worker.postMessage({ typedArray: chunk.data, func: system.update }, [chunk.data])
-            }
-        }
-    }
+        const floats = new Float32Array([1.5, 2.5, 3.5, 4.5]);
+        const worker = new Worker(WORKER_FILE_PATH);
 
-    private find_matching_chunks(system : System) : Chunk[] {
-        return [];
+        const ints = new Int32Array([1, 2, 3, 4]);
+        const worker2 = new Worker(WORKER_FILE_PATH);
+
+        worker.on('message', (result) => {
+            console.log(`result 1: ${result[1]}`);
+        });
+
+        worker2.on('message', (result) => {
+            console.log(`result 2: ${result[1]}`);
+        })
+
+        const query = this.system_container.get_chunk_query(Position, Velocity);
+        worker.postMessage([query, floats]);
+
+        const query2 = this.system_container.get_chunk_query(Position, Velocity);
+        worker2.postMessage([query2, ints]);
+
     }
 }

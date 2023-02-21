@@ -1,11 +1,16 @@
-import {Query} from "./query";
-import {Chunk} from "./chunk";
+import {SystemQuery, QueryFactory} from "./systemQuery";
 
 export abstract class System {
 
-    public abstract get query(): Query;
+    public abstract get include_for_update() : Function[];
+    public abstract get exclude_for_update() : Function[];
 
-    public init(){}
+    public query : SystemQuery;
 
-    public abstract update(chunk : Chunk);
+
+    public init(in_query : SystemQuery) {
+        this.query = in_query;
+    }
+
+    public abstract update(chunk : ArrayBuffer);
 }
