@@ -1,15 +1,16 @@
-import {Query} from "./query";
-import {Entity} from "./entity";
-import {Chunk, ComponentData} from "./chunk";
+import {SystemQuery, QueryFactory} from "./systemQuery";
 
-export abstract class System{ //todo generic-ify? https://github.com/Microsoft/TypeScript/pull/26063b
-    public abstract get query(): Query;
+export abstract class System {
 
-    public init(){}
+    public abstract get include_for_update() : Function[];
+    public abstract get exclude_for_update() : Function[];
 
-    public abstract update(entities : Array<Entity>, chunk : Chunk);
+    public query : SystemQuery;
 
-    public get requiresForUpdate() {
-        return this.query;
+
+    public init(in_query : SystemQuery) {
+        this.query = in_query;
     }
+
+    public abstract update(chunk : ArrayBuffer);
 }

@@ -1,116 +1,35 @@
-import {Chunk} from "./chunk"
-import {Component, ComponentClass} from "./component";
-import {Query} from "./query";
-import {Entity} from "./entity";
-import {System} from "./system";
+import { Worker } from 'worker_threads';
+import {QueryFactory} from "./systemQuery";
+import {SystemContainer} from "./system_container";
+import {Position} from "../game/movement/components/position";
+import {Velocity} from "../game/movement/components/velocity";
 
-export class World{
-    private chunks : Array<Chunk> = new Array<Chunk>();
-    private updateQuerySystems : Array<[Query, Array<System>]> = new Array<[Query, Array<System>]>();
+const WORKER_FILE_PATH = './build/ecs/system_worker.js';
 
-    public createEntity(...data : Array<Component>){
-        let query = new Query(...data.map(c => c.constructor));
-        let chunk = this.getOrCreateArchetypeChunk(query);
-        return chunk.createEntity(data);
-    }
+export class World {
 
-    public registerSystem(system : System){
-        for (let querySystemPair of this.updateQuerySystems) {
-            let query = querySystemPair[0];
-            let systems = querySystemPair[1];
+    private system_container = new SystemContainer();
 
-            if (query.matches(system.query)){
-                systems.push(system);
-                return;
-            }
-        }
+    public update() {
+        const floats = new Float32Array([1.5, 2.5, 3.5, 4.5]);
+        const worker = new Worker(WORKER_FILE_PATH);
 
-        this.updateQuerySystems.push([system.query, new Array<System>(system)]);
-        system.init();
-    }
+        const ints = new Int32Array([1, 2, 3, 4]);
+        const worker2 = new Worker(WORKER_FILE_PATH);
 
-    public update(){
-        for (let querySystemPair of this.updateQuerySystems){
-            let query = querySystemPair[0];
-            let systems = querySystemPair[1];
+        worker.on('message', (result) => {
+            console.log(`result 1: ${result[1]}`);
+        });
 
-            let chunks = this.findMatchingChunks(query);
-            for (let system of systems){
-                for (let chunk of chunks){
-                    system.update(chunk.entities, chunk);
-                }
-            }
-        }
-    }
+        worker2.on('message', (result) => {
+            console.log(`result 2: ${result[1]}`);
+        })
 
-    private findArchetypeChunk(query : Query) : Chunk{
-        let queryLength = query.values.size;
-        for (let chunk of this.chunks){
-            let chunkQuery = chunk.query.values;
-            if (chunkQuery.size != queryLength){
-                continue;
-            }
+        const query = this.system_container.get_chunk_query(Position, Velocity);
+        worker.postMessage([query, floats]);
 
-            let isMatch = true;
-            for (let queryKey of chunkQuery){
-                if (!query.has(queryKey)){
-                    isMatch = false;
-                    break;
-                }
-            }
+        const query2 = this.system_container.get_chunk_query(Position, Velocity);
+        worker2.postMessage([query2, ints]);
 
-            if (isMatch){
-                return chunk;
-            }
-        }
-
-        return null;
-    }
-
-    //get chunk for archetype -> when creating entity add it here
-    private getOrCreateArchetypeChunk(query : Query) : Chunk{
-        let foundChunk = this.findArchetypeChunk(query);
-        if (foundChunk != null)
-        {
-            return foundChunk;
-        }
-
-        return this.createChunk(query);
-    }
-
-    //get all chunks with superset of query -> systems etc.
-    private findMatchingChunks(query : Query) : Array<Chunk> {
-        //todo some elegant functional bullshit
-        //maybe cache queries somewhere so only one check / query / frame?
-        let foundChunks = new Array<Chunk>; //allocate new array every time?
-        for (let chunk of this.chunks){
-            let chunkQuery = chunk.query.values;
-            let chunkMatchesQuery = true;
-
-            for (let type of query.values){
-                if (!chunkQuery.has(type)){
-                    chunkMatchesQuery = false;
-                    break;
-                }
-            }
-
-            if (chunkMatchesQuery)
-            {
-                foundChunks.push(chunk);
-            }
-        }
-
-        return foundChunks;
-    }
-
-    private createChunk(query : Query) : Chunk{
-        let chunk = new Chunk(query);
-        this.chunks.push(chunk);
-        return chunk; //factory / pooling?
-    }
-
-    private deleteEntity(entity : Entity){
-        let chunk = this.findArchetypeChunk(entity.query);
-        chunk.deleteEntity(entity);
     }
 }
