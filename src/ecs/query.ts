@@ -1,30 +1,19 @@
 import {Component} from "./component";
+import {ChunkUtils} from "./chunk";
 
-export type SystemQuery = {include :  Uint32Array, exclude : Uint32Array};
+export type Query = {include :  Uint32Array, exclude : Uint32Array};
 
 export class QueryFactory {
-    public components : Map<Function, Uint32Array> = new Map<Function, Uint32Array>();
+    private component_query_map : Map<Function, Uint32Array> = new Map<Function, Uint32Array>();
+    private offset_component_map : Map<number, Function> = new Map<number, Function>();
+    public component_size_map : Map<Function, number> = new Map<Function, number>();
 
-    public
-    public constructor() {
-        //This don't work, despite what chatgpt has to say
-        // let component_classes = Reflect.ownKeys(global).filter(key => {
-        //     const target = global[key];
-        //     return (typeof target === "function") && (target.prototype instanceof Component);
-        // });
-        //
-        // console.log(component_classes);
-    }
-
-    public make_system_query(include : Function[], exclude : Function[]) : SystemQuery {
+    public make_system_query(include : Function[], exclude : Function[]) : Query {
         return { include : this.make_query_array(include), exclude : this.make_query_array(exclude) };
     }
 
-
     public make_query_array(query : Function[]) : Uint32Array {
-
         let bitmask_array = new Uint32Array(1);
-
         for (const component of query) {
             const bitmask = this.get_component_bitmask(component);
             bitmask_array = QueryFactory.combine_bitmasks(bitmask, bitmask_array, bitmask_array);
@@ -34,20 +23,29 @@ export class QueryFactory {
     }
 
     private get_component_bitmask(component_type : Function) {
-        if (this.components.has(component_type)) {
-            return this.components.get(component_type);
+        if (this.component_query_map.has(component_type)) {
+            return this.component_query_map.get(component_type);
         }
-        else {
-            let bitshift = this.components.size;
-            let query_index = Math.floor(bitshift / 32);
-            let bitmask = new Uint32Array(query_index + 1);
 
-            bitshift %= 32;
-            bitmask[query_index] |= 1 << bitshift;
+        return this.add_component_bitmask(component_type);
+    }
 
-            this.components.set(component_type, bitmask);
-            return bitmask;
-        }
+    private add_component_bitmask(component_type : Function) {
+        const total_bitshift = this.component_query_map.size;
+        const query_index = Math.floor(total_bitshift / 32);
+        const bitmask = new Uint32Array(query_index + 1);
+
+        const bitshift = total_bitshift % 32;
+        bitmask[query_index] |= 1 << bitshift;
+
+        this.component_query_map.set(component_type, bitmask);
+        this.offset_component_map.set(total_bitshift, component_type);
+
+        // @ts-ignore
+        const instance = new component_type();
+        this.component_size_map.set(component_type, instance.size);
+
+        return bitmask;
     }
 
     public static combine_bitmasks(a : Uint32Array, b : Uint32Array, output : Uint32Array) : Uint32Array {
@@ -75,6 +73,30 @@ export class QueryFactory {
         }
 
         return output_bitmask;
+    }
+
+    public get_chunk_component_types(chunk_query : Uint32Array) : Function[] {
+        let chunk_component_types : Function[] = [];
+        for (let chunk_mask_index = 0; chunk_mask_index < chunk_query.length; chunk_mask_index++) {
+            const chunk_mask = chunk_query[chunk_mask_index];
+            for (let bit_offset = 0; bit_offset < 32; bit_offset++) {
+                if (((chunk_mask >> bit_offset) & 1) === 1) {
+                    const total_offset = (chunk_mask_index * 32) + bit_offset;
+                    chunk_component_types.push(this.offset_component_map.get(total_offset));
+                }
+            }
+        }
+
+        return chunk_component_types;
+    }
+
+    public get_chunk_entity_size(chunk_component_types : Function[]) : number {
+        let entity_byte_size = 0;
+        for (const component_type of chunk_component_types) {
+            entity_byte_size += this.component_size_map.get(component_type);
+        }
+
+        return entity_byte_size;
     }
 }
 
@@ -112,7 +134,7 @@ export class QueryUtils {
         return true;
     }
 
-    public static Matches(chunk_includes : Uint32Array, system_query : SystemQuery) : boolean {
+    public static Matches(chunk_includes : Uint32Array, system_query : Query) : boolean {
         return QueryUtils.check_exclude(chunk_includes, system_query.exclude) &&
                QueryUtils.check_include(chunk_includes, system_query.include);
     }

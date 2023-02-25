@@ -1,6 +1,7 @@
 export abstract class Component{
     public abstract get size() : number;
-    public get name() : string { return this.constructor.name; }
+
+    public abstract set_values_in(offset : number, buffer : DataView);
 }
 
 export class Vector3 extends Component {
@@ -9,7 +10,7 @@ export class Vector3 extends Component {
     public z: number;
 
     public get size() {
-        return 3 * 8;
+        return 3 * 4;
     }
 
     constructor(x: number, y: number, z: number) {
@@ -18,6 +19,12 @@ export class Vector3 extends Component {
         this.x = x;
         this.y = y;
         this.z = z;
+    }
+
+    public set_values_in(offset: number, buffer: DataView) {
+        buffer.setFloat32(offset, this.x, true);
+        buffer.setFloat32(offset + 4, this.y, true);
+        buffer.setFloat32(offset + 8, this.z, true);
     }
 }
 

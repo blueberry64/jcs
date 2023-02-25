@@ -1,35 +1,58 @@
 import { Worker } from 'worker_threads';
-import {QueryFactory} from "./systemQuery";
 import {SystemContainer} from "./system_container";
 import {Position} from "../game/movement/components/position";
 import {Velocity} from "../game/movement/components/velocity";
+import {ChunkUtils} from "./chunk";
 
 const WORKER_FILE_PATH = './build/ecs/system_worker.js';
 
 export class World {
-
     private system_container = new SystemContainer();
 
     public update() {
-        const floats = new Float32Array([1.5, 2.5, 3.5, 4.5]);
+        // const floats = new Float32Array([1.5, 2.5, 3.5, 4.5]);
         const worker = new Worker(WORKER_FILE_PATH);
-
-        const ints = new Int32Array([1, 2, 3, 4]);
+        //
+        // const ints = new Int32Array([1, 2, 3, 4]);
         const worker2 = new Worker(WORKER_FILE_PATH);
 
         worker.on('message', (result) => {
-            console.log(`result 1: ${result[1]}`);
+            print_stuff("1", result[1])
         });
 
         worker2.on('message', (result) => {
-            console.log(`result 2: ${result[1]}`);
+            print_stuff("2", result[1])
         })
 
-        const query = this.system_container.get_chunk_query(Position, Velocity);
-        worker.postMessage([query, floats]);
 
-        const query2 = this.system_container.get_chunk_query(Position, Velocity);
-        worker2.postMessage([query2, ints]);
+        let positons : Position[] = [];
+        let velocities : Velocity[] = [];
+
+        for (let i = 0; i < 256; i++) {
+            positons.push(new Position(i, 2*i, 3*i));
+            velocities.push(new Velocity(1, -1, i));
+        }
+
+        const chunk1 = this.system_container.make_chunk([positons, velocities], Position, Velocity);
+        console.log(chunk1.chunk);
+        const chunk2 = this.system_container.make_chunk([positons, velocities], Velocity, Position);
+        console.log((chunk2.chunk));
+
+        worker.postMessage([chunk1.archetype, chunk1.chunk]);
+        // worker2.postMessage([chunk2.archetype, chunk2.chunk]);
+
+        worker.postMessage([chunk1.archetype, chunk1.chunk]);
+        // worker2.postMessage([chunk2.archetype, chunk2.chunk]);
 
     }
+}
+
+function print_stuff(label : string, chunk_data : ArrayBuffer) {
+    console.log(label);
+
+    const positions = new Float32Array(chunk_data, 0, 256);
+    console.log(positions);
+
+    const velocities = new Float32Array(chunk_data, 1024, 256);
+    console.log(velocities);
 }
