@@ -1,4 +1,5 @@
 import {Query, QueryFactory} from "./query";
+import {Chunk} from "./chunk";
 
 export abstract class System {
 
@@ -12,5 +13,13 @@ export abstract class System {
         this.query = in_query;
     }
 
-    public abstract update(num_entities : number, chunk_data : Map<Function, DataView>);
+    public abstract update(chunk_data : Chunk);
+
+    protected static read_float(view : DataView, offset : number,) : number {
+        return view.getFloat32(offset, true);
+    }
+
+    protected static set_float(view : DataView, offset : number, value) {
+        return view.setFloat32(offset, value, true);
+    }
 }

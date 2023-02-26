@@ -1,7 +1,7 @@
 import {System} from "../../../ecs/system";
 import {Velocity} from "../components/velocity";
 import {Position} from "../components/position";
-import {QueryFactory} from "../../../ecs/query";
+import {Chunk} from "../../../ecs/chunk";
 
 export class MoveSystem extends System {
     get exclude_for_update(): Function[] {
@@ -12,15 +12,15 @@ export class MoveSystem extends System {
         return [Position, Velocity];
     }
 
-    public update(num_entities : number, chunk_data : Map<Function, DataView>) {
-        const positions = chunk_data.get(Position);
-        const velocities = chunk_data.get(Velocity);
+    public update(chunk : Chunk) {
+        const positions = chunk.get(Position);
+        const velocities = chunk.get(Velocity);
 
         let position, velocity =  0;
         for (let offset = 0; offset < positions.byteLength; offset += 4) {
-            position = positions.getFloat32(offset, true);
-            velocity = velocities.getFloat32(offset, true);
-            positions.setFloat32(offset, position + velocity, true);//position + velocity);
+            position = System.read_float(positions, offset);
+            velocity = System.read_float(velocities, offset);
+            System.set_float(positions, offset, position + velocity);//position + velocity);
         }
     }
 }

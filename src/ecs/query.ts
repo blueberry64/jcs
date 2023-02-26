@@ -6,10 +6,14 @@ export type Query = {include :  Uint32Array, exclude : Uint32Array};
 export class QueryFactory {
     private component_query_map : Map<Function, Uint32Array> = new Map<Function, Uint32Array>();
     private offset_component_map : Map<number, Function> = new Map<number, Function>();
-    public component_size_map : Map<Function, number> = new Map<Function, number>();
+    private component_size_map : Map<Function, number> = new Map<Function, number>();
 
     public make_system_query(include : Function[], exclude : Function[]) : Query {
         return { include : this.make_query_array(include), exclude : this.make_query_array(exclude) };
+    }
+
+    public get_component_size(component_type : Function) : number {
+        return this.component_size_map.get(component_type);
     }
 
     public make_query_array(query : Function[]) : Uint32Array {

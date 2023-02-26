@@ -22,28 +22,27 @@ export class World {
 
         worker2.on('message', (result) => {
             print_stuff("2", result[1])
-        })
+        });
 
 
-        let positons : Position[] = [];
+        let positions : Position[] = [];
         let velocities : Velocity[] = [];
 
         for (let i = 0; i < 256; i++) {
-            positons.push(new Position(i, 2*i, 3*i));
+            positions.push(new Position(i, 2*i, 3*i));
             velocities.push(new Velocity(1, -1, i));
         }
 
-        const chunk1 = this.system_container.make_chunk([positons, velocities], Position, Velocity);
-        console.log(chunk1.chunk);
-        const chunk2 = this.system_container.make_chunk([positons, velocities], Velocity, Position);
-        console.log((chunk2.chunk));
+        const chunk1 = this.system_container.make_chunk([positions, velocities], Position, Velocity);
+        // console.log(chunk1.chunk);
+        const chunk2 = this.system_container.make_chunk([positions, velocities], Velocity, Position);
+        // console.log((chunk2.chunk));
 
-        worker.postMessage([chunk1.archetype, chunk1.chunk]);
-        // worker2.postMessage([chunk2.archetype, chunk2.chunk]);
+        worker.postMessage([chunk1.archetype, chunk1.buffer]);
+        worker2.postMessage([chunk2.archetype, chunk2.buffer]);
 
-        worker.postMessage([chunk1.archetype, chunk1.chunk]);
-        // worker2.postMessage([chunk2.archetype, chunk2.chunk]);
-
+        worker.postMessage([chunk1.archetype, chunk1.buffer]);
+        worker2.postMessage([chunk2.archetype, chunk2.buffer]);
     }
 }
 
@@ -51,8 +50,8 @@ function print_stuff(label : string, chunk_data : ArrayBuffer) {
     console.log(label);
 
     const positions = new Float32Array(chunk_data, 0, 256);
-    console.log(positions);
+    console.log(positions[0], positions[1], positions[2]);
 
     const velocities = new Float32Array(chunk_data, 1024, 256);
-    console.log(velocities);
+    console.log(velocities[0], velocities[1], velocities[2]);
 }

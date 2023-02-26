@@ -2,6 +2,10 @@ export abstract class Component{
     public abstract get size() : number;
 
     public abstract set_values_in(offset : number, buffer : DataView);
+    
+    protected static set_float(offset : number, buffer : DataView, value : number) {
+        buffer.setFloat32(offset, value, true);
+    }
 }
 
 export class Vector3 extends Component {
@@ -22,20 +26,8 @@ export class Vector3 extends Component {
     }
 
     public set_values_in(offset: number, buffer: DataView) {
-        buffer.setFloat32(offset, this.x, true);
-        buffer.setFloat32(offset + 4, this.y, true);
-        buffer.setFloat32(offset + 8, this.z, true);
-    }
-}
-
-export class Num {
-    public value : number;
-
-    public get size() {
-        return 8;
-    }
-
-    constructor(value : number) {
-        this.value = value;
+        Component.set_float(offset, buffer, this.x);
+        Component.set_float(offset + 4, buffer, this.y);
+        Component.set_float(offset + 8, buffer, this.z);
     }
 }

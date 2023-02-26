@@ -1,13 +1,15 @@
 import {System} from "./system";
 import {QueryFactory, QueryUtils} from "./query";
 import {MoveSystem} from "../game/movement/systems/move_system";
-import {ChunkUtils} from "./chunk";
+import {ChunkUtils, Chunk} from "./chunk";
 import {Component} from "./component";
 
 //Guarantee systems and queries created in same order across different workers
 export class SystemContainer {
     private query_factory = new QueryFactory();
     private systems : System[] = [];
+
+    private chunk : Chunk = new Chunk();
 
     public constructor() {
         this.systems.push(new MoveSystem());
@@ -17,19 +19,12 @@ export class SystemContainer {
         }
     }
 
-    public update(chunk_includes : Uint32Array, chunk : ArrayBuffer) {
-        const component_types = this.query_factory.get_chunk_component_types(chunk_includes);
-        const entity_size = this.query_factory.get_chunk_entity_size(component_types);
-
-        const num_entities = ChunkUtils.CHUNK_BYTE_SIZE / entity_size; //todo not full chunks all the time.
-        const chunk_data = ChunkUtils.get_chunk_data_views(entity_size,
-                                                           component_types,
-                                                           this.query_factory.component_size_map,
-                                                           chunk);
+    public update(chunk_includes : Uint32Array, chunk_data : ArrayBuffer) {
+        this.chunk.init(chunk_includes, chunk_data, this.query_factory);
 
         for (const system of this.systems) {
             if (QueryUtils.Matches(chunk_includes, system.query)) {
-                system.update(num_entities, chunk_data);
+                system.update(this.chunk);
             }
         }
     }
@@ -38,32 +33,19 @@ export class SystemContainer {
         return this.query_factory.make_query_array(chunk_query);
     }
 
-    public make_chunk(data : Component[][], ...chunk_query : Function[]) : {archetype : Uint32Array, chunk : ArrayBuffer} {
-        const component_size_map = this.query_factory.component_size_map;
+    public make_chunk(data : Component[][], ...chunk_query : Function[]) : { archetype : Uint32Array, buffer : ArrayBuffer} {
         const entity_size = this.query_factory.get_chunk_entity_size(chunk_query);
+        const num_entities = ChunkUtils.get_max_entities_in_chunk(entity_size);
+        const archetype = this.query_factory.make_query_array(chunk_query);
 
-        const chunk = ChunkUtils.make_empty();
-        const chunk_data = ChunkUtils.get_chunk_data_views(entity_size, chunk_query, component_size_map, chunk);
-
-        for (const component_array of data) {
-            //ass-umption: each component array is nonempty and same type. todo fix - generic type or something.
-            const first = component_array[0];
-            const component_type = first.constructor;
-            const size = component_size_map.get(component_type);
-            const component_data = chunk_data.get(component_type);
-
-            let offset = 0;
-            const last_offset = component_data.byteLength - size;
-            for (const instance of component_array) {
-                if (offset >= last_offset) {
-                    break; //todo multiple chunks
-                }
-
-                instance.set_values_in(offset, component_data);
-                offset += size;
+        let chunk_buffer = ChunkUtils.make_chunk_buffer();
+        this.chunk.init(archetype, chunk_buffer, this.query_factory);
+        for (const components of data) {
+            for (let i = 0; (i < components.length) && (i < num_entities); i++) {
+                this.chunk.set(i, components[i]);
             }
         }
 
-        return { archetype: this.query_factory.make_query_array(chunk_query), chunk : chunk};
+        return { archetype: archetype, buffer:chunk_buffer }
     }
 }
